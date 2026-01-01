@@ -28,11 +28,14 @@
   "author": "Đỗ Văn Hải <haidv28062004@gmail.com> (https://github.com/haidv2806)",
   "license": "MIT",
   "homepage": "https://github.com/haidv2806/valtec-tts#readme",
-  "dependencies": {},
+  "dependencies": {
+    "onnxruntime-react-native": "^1.23.2",
+    "react-native-fs": "^2.20.0"
+  },
   "devDependencies": {
     "@types/react": "~19.1.0",
-    "expo-module-scripts": "^5.0.8",
     "expo": "^54.0.27",
+    "expo-module-scripts": "^5.0.8",
     "react-native": "0.81.5"
   },
   "peerDependencies": {
