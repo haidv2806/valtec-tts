@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["ValtecTtsModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.valtectts.ValtecTtsModule"]
+  }
+}
