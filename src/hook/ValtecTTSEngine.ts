@@ -3,6 +3,7 @@ import { Asset } from 'expo-asset';
 import { InferenceSession, Tensor } from 'onnxruntime-react-native';
 import RNFS from 'react-native-fs'; // Import react-native-fs
 import { VietnameseG2P } from './vietnamese_g2p.js';
+import { NativeModules, Platform } from 'react-native';
 
 export class ValtecTTSEngine {
     private sessions: any = {};
@@ -11,38 +12,118 @@ export class ValtecTTSEngine {
     private isInitialized = false;
 
     async initialize() {
-        const config = require('../../model/tts_config.json')
+    console.log('[TTS] initialize() START');
+
+    try {
+        // ===== 1. Kiểm tra NativeModules =====
+        console.log('[TTS] NativeModules keys:', Object.keys(NativeModules));
+        console.log('[TTS] NativeModules.Onnxruntime:', NativeModules.Onnxruntime);
+
+        if (!NativeModules.Onnxruntime) {
+            throw new Error('[TTS] NativeModules.Onnxruntime = null ❌ (native chưa load)');
+        }
+
+        // ===== 2. Load config =====
+        console.log('[TTS] Loading tts_config.json');
+        const config = require('../../model/tts_config.json');
+        console.log('[TTS] Config loaded OK');
+
         this.symbolToId = config.symbol_to_id;
         this.viLangId = config.language_id_map?.VI ?? 7;
 
-        const options = { executionProviders: ['coreml', 'cpu'] };
+        // ===== 3. Options =====
+        const options = {
+            executionProviders:
+                Platform.OS === 'ios'
+                    ? ['coreml', 'cpu']
+                    : ['nnapi', 'cpu'],
+        };
 
-        const readAsset = async (assetModule: any): Promise<Buffer> => {
+        console.log('[TTS] ORT options:', options);
+
+        // ===== 4. Asset reader =====
+        const readAsset = async (assetModule: any, name: string): Promise<Buffer> => {
+            console.log(`[TTS] Reading asset: ${name}`);
+
             const asset = Asset.fromModule(assetModule);
+            console.log(`[TTS] Asset info (${name}):`, asset);
+
             if (!asset.localUri) {
+                console.log(`[TTS] Downloading asset: ${name}`);
                 await asset.downloadAsync();
             }
+
             if (!asset.localUri) {
-                throw new Error(`Failed to get local URI for asset: ${asset.name}`);
+                throw new Error(`[TTS] asset.localUri null: ${name}`);
             }
+
+            console.log(`[TTS] Reading file from: ${asset.localUri}`);
             const base64 = await RNFS.readFile(asset.localUri, 'base64');
+
+            console.log(
+                `[TTS] ${name} size (base64 chars):`,
+                base64.length
+            );
+
             return Buffer.from(base64, 'base64');
         };
 
-        const textEncoderBytes = await readAsset(require('../../model/text_encoder.onnx'));
-        this.sessions.textEncoder = await InferenceSession.create(textEncoderBytes, options);
+        // ===== 5. Load models từng cái =====
+        console.log('[TTS] Loading text_encoder.onnx');
+        const textEncoderBytes = await readAsset(
+            require('../../model/text_encoder.onnx'),
+            'text_encoder.onnx'
+        );
+        console.log('[TTS] Creating textEncoder session');
+        this.sessions.textEncoder = await InferenceSession.create(
+            textEncoderBytes,
+            options
+        );
+        console.log('[TTS] textEncoder READY');
 
-        const durationPredictorBytes = await readAsset(require('../../model/duration_predictor.onnx'));
-        this.sessions.durationPredictor = await InferenceSession.create(durationPredictorBytes, options);
+        console.log('[TTS] Loading duration_predictor.onnx');
+        const durationPredictorBytes = await readAsset(
+            require('../../model/duration_predictor.onnx'),
+            'duration_predictor.onnx'
+        );
+        console.log('[TTS] Creating durationPredictor session');
+        this.sessions.durationPredictor = await InferenceSession.create(
+            durationPredictorBytes,
+            options
+        );
+        console.log('[TTS] durationPredictor READY');
 
-        const flowBytes = await readAsset(require('../../model/flow.onnx'));
+        console.log('[TTS] Loading flow.onnx');
+        const flowBytes = await readAsset(
+            require('../../model/flow.onnx'),
+            'flow.onnx'
+        );
+        console.log('[TTS] Creating flow session');
         this.sessions.flow = await InferenceSession.create(flowBytes, options);
+        console.log('[TTS] flow READY');
 
-        const decoderBytes = await readAsset(require('../../model/decoder.onnx'));
-        this.sessions.decoder = await InferenceSession.create(decoderBytes, options);
+        console.log('[TTS] Loading decoder.onnx');
+        const decoderBytes = await readAsset(
+            require('../../model/decoder.onnx'),
+            'decoder.onnx'
+        );
+        console.log('[TTS] Creating decoder session');
+        this.sessions.decoder = await InferenceSession.create(
+            decoderBytes,
+            options
+        );
+        console.log('[TTS] decoder READY');
 
+        // ===== 6. Done =====
         this.isInitialized = true;
+        console.log('[TTS] initialize() SUCCESS ✅');
+    } catch (err: any) {
+        console.error('[TTS] initialize() FAILED ❌');
+        console.error('[TTS] Error message:', err?.message);
+        console.error('[TTS] Full error:', err);
+        throw err; // QUAN TRỌNG: để crash lộ ra log native
     }
+}
 
     async synthesize(text: string, speakerId: number = 1, lengthScale: number = 1.0, noiseScale: number = 0.667) {
         if (!this.isInitialized) throw new Error("Engine chưa khởi tạo");
