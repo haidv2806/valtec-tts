@@ -42,5 +42,9 @@
     "expo": "*",
     "react": "*",
     "react-native": "*"
-  }
+  },
+  "files": [
+    "dist",
+    "model"
+  ]
 }

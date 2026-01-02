@@ -1,0 +1,47 @@
+.
+├── example
+│   ├── assets
+│   │   ├── adaptive-icon.png
+│   │   ├── favicon.png
+│   │   ├── icon.png
+│   │   └── splash-icon.png
+│   ├── app.json
+│   ├── App.tsx
+│   ├── babel.config.js
+│   ├── index.ts
+│   ├── metro.config.js
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── webpack.config.js
+├── model
+│   ├── decoder.onnx
+│   ├── duration_predictor.onnx
+│   ├── flow.onnx
+│   ├── gitattributes
+│   ├── phoneme_dict.json
+│   ├── precomputed_latents.json
+│   ├── README.md
+│   ├── text_encoder.onnx
+│   └── tts_config.json
+├── src
+│   ├── hook
+│   │   ├── onnxHelper.ts
+│   │   ├── textChunker.ts
+│   │   ├── ValtecTTSEngine.ts
+│   │   └── vietnamese_g2p.ts
+│   ├── index.ts
+│   ├── ValtecTts.types.ts
+│   ├── ValtecTtsModule.ts
+│   ├── ValtecTtsModule.web.ts
+│   ├── ValtecTtsView.tsx
+│   └── ValtecTtsView.web.tsx
+├── expo-module.config.json
+├── metro.config.js
+├── package-lock.json
+├── package.json
+├── project-structure.txt
+├── README.md
+└── tsconfig.json
+
+6 directories, 39 files

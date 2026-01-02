@@ -10,7 +10,8 @@ export class ValtecTTSEngine {
     private viLangId: number = 7;
     private isInitialized = false;
 
-    async initialize(config: any) {
+    async initialize() {
+        const config = require('../../model/tts_config.json')
         this.symbolToId = config.symbol_to_id;
         this.viLangId = config.language_id_map?.VI ?? 7;
 
@@ -28,16 +29,16 @@ export class ValtecTTSEngine {
             return Buffer.from(base64, 'base64');
         };
 
-        const textEncoderBytes = await readAsset(require('./model/text_encoder.onnx'));
+        const textEncoderBytes = await readAsset(require('../../model/text_encoder.onnx'));
         this.sessions.textEncoder = await InferenceSession.create(textEncoderBytes, options);
 
-        const durationPredictorBytes = await readAsset(require('./model/duration_predictor.onnx'));
+        const durationPredictorBytes = await readAsset(require('../../model/duration_predictor.onnx'));
         this.sessions.durationPredictor = await InferenceSession.create(durationPredictorBytes, options);
 
-        const flowBytes = await readAsset(require('./model/flow.onnx'));
+        const flowBytes = await readAsset(require('../../model/flow.onnx'));
         this.sessions.flow = await InferenceSession.create(flowBytes, options);
 
-        const decoderBytes = await readAsset(require('./model/decoder.onnx'));
+        const decoderBytes = await readAsset(require('../../model/decoder.onnx'));
         this.sessions.decoder = await InferenceSession.create(decoderBytes, options);
 
         this.isInitialized = true;
