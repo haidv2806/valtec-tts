@@ -11,7 +11,7 @@ import {
   Text,
 } from 'react-native';
 
-import { ValtecTTSEngine, splitTextIntoChunks, TextChunk } from 'valtec-tts';
+import ValtecTTSEngine, { splitTextIntoChunks, TextChunk } from 'valtec-tts';
 
 /* ================= WAV HELPERS ================= */
 
@@ -70,6 +70,8 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [speakerId, setSpeakerId] = useState(1);
+  const [noiseScale, setNoiseScale] = useState(0.667);
+  const [lengthScale, setLengthScale] = useState(1.0);
 
   const engineRef = useRef<ValtecTTSEngine | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -133,6 +135,8 @@ export default function App() {
       }
 
       await play(out);
+      // const audio = await engineRef.current.synthesize(text, speakerId, noiseScale, lengthScale);
+      // await play(audio);
     } finally {
       setProcessing(false);
     }
@@ -180,6 +184,28 @@ export default function App() {
             </Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* NOISE SCALE */}
+      <Text style={styles.label}>Noise Scale: {noiseScale.toFixed(2)}</Text>
+      <View style={styles.adjustRow}>
+        <TouchableOpacity style={styles.adjustBtn} onPress={() => setNoiseScale(v => Math.max(0, +(v - 0.05).toFixed(2)))}>
+          <Text style={styles.adjustText}>−</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.adjustBtn} onPress={() => setNoiseScale(v => Math.min(1.5, +(v + 0.05).toFixed(2)))}>
+          <Text style={styles.adjustText}>＋</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* LENGTH SCALE */}
+      <Text style={styles.label}>Length Scale: {lengthScale.toFixed(2)}</Text>
+      <View style={styles.adjustRow}>
+        <TouchableOpacity style={styles.adjustBtn} onPress={() => setLengthScale(v => Math.max(0.5, +(v - 0.05).toFixed(2)))}>
+          <Text style={styles.adjustText}>−</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.adjustBtn} onPress={() => setLengthScale(v => Math.min(2.0, +(v + 0.05).toFixed(2)))}>
+          <Text style={styles.adjustText}>＋</Text>
+        </TouchableOpacity>
       </View>
 
       {/* PLAY BUTTON */}
@@ -304,5 +330,22 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontWeight: '600',
     marginBottom: 6,
+  },
+
+  adjustRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  adjustBtn: {
+    width: '48%',
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#eee',
+    alignItems: 'center',
+  },
+  adjustText: {
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });
