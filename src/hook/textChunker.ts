@@ -1,3 +1,4 @@
+import TextNormalizer from "vinorm";
 // Định nghĩa kiểu cho một chunk văn bản đã được xử lý
 export interface TextChunk {
     text: string;
@@ -15,8 +16,18 @@ export interface TextChunk {
  * @returns Mảng các TextChunk đã được xử lý.
  */
 export function splitTextIntoChunks(fullText: string, maxWordsPerChunk: number = 10): TextChunk[] {
+    const normalizeText = TextNormalizer.normalize(fullText, {
+        lower: true,
+        punc: false,
+        unknown: false,
+    });
+
+    console.log(
+        normalizeText
+    );
+
     const chunks: TextChunk[] = [];
-    const lines = fullText.split('\n');
+    const lines = normalizeText.split('\n');
 
     const SHORT_SILENCE = 0.2;
     const LONG_SILENCE = 0.5;
@@ -56,10 +67,10 @@ export function splitTextIntoChunks(fullText: string, maxWordsPerChunk: number =
 
             // Nếu part là văn bản thường
             const wordsInPart = part.trim().split(/\s+/).filter(w => w.length > 0);
-            
+
             for (const word of wordsInPart) {
                 currentWords.push(word);
-                
+
                 // KIỂM TRA QUY TẮC 10 TỪ: Ngắt ngay khi chạm mốc
                 if (currentWords.length === maxWordsPerChunk) {
                     chunks.push({

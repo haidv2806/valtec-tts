@@ -30,7 +30,8 @@
   "homepage": "https://github.com/haidv2806/valtec-tts#readme",
   "dependencies": {
     "onnxruntime-react-native": "^1.23.2",
-    "react-native-fs": "^2.20.0"
+    "react-native-fs": "^2.20.0",
+    "vinorm": "^1.0.6"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
