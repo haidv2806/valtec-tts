@@ -15,7 +15,7 @@ export interface TextChunk {
  * @param maxWordsPerChunk Khi không có dấu câu, chia thành các đoạn không quá số từ này.
  * @returns Mảng các TextChunk đã được xử lý.
  */
-export function splitTextIntoChunks(fullText: string, maxWordsPerChunk: number = 10): TextChunk[] {
+export function splitTextIntoChunks(fullText: string, maxWordsPerChunk: number = 10, SHORT_SILENCE: number = 0.2, LONG_SILENCE: number = 0.5): TextChunk[] {
     const normalizeText = TextNormalizer.normalize(fullText, {
         lower: true,
         punc: false,
@@ -28,9 +28,6 @@ export function splitTextIntoChunks(fullText: string, maxWordsPerChunk: number =
 
     const chunks: TextChunk[] = [];
     const lines = normalizeText.split('\n');
-
-    const SHORT_SILENCE = 0.2;
-    const LONG_SILENCE = 0.5;
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();

@@ -113,30 +113,30 @@ export default function App() {
     setProcessing(true);
 
     try {
-      const chunks: TextChunk[] = splitTextIntoChunks(text, 10);
-      const buffers: Float32Array[] = [];
+      // const chunks: TextChunk[] = splitTextIntoChunks(text, 10);
+      // const buffers: Float32Array[] = [];
 
-      for (const c of chunks) {
-        if (c.text) {
-          const audio = await engineRef.current.synthesize(c.text, speakerId);
-          buffers.push(audio);
-        }
-        if (c.addSilenceAfter > 0) {
-          buffers.push(new Float32Array(24000 * c.addSilenceAfter));
-        }
-      }
+      // for (const c of chunks) {
+      //   if (c.text) {
+      //     const audio = await engineRef.current.synthesize(c.text, speakerId);
+      //     buffers.push(audio);
+      //   }
+      //   if (c.addSilenceAfter > 0) {
+      //     buffers.push(new Float32Array(24000 * c.addSilenceAfter));
+      //   }
+      // }
 
-      const total = buffers.reduce((s, b) => s + b.length, 0);
-      const out = new Float32Array(total);
-      let off = 0;
-      for (const b of buffers) {
-        out.set(b, off);
-        off += b.length;
-      }
+      // const total = buffers.reduce((s, b) => s + b.length, 0);
+      // const out = new Float32Array(total);
+      // let off = 0;
+      // for (const b of buffers) {
+      //   out.set(b, off);
+      //   off += b.length;
+      // }
 
-      await play(out);
-      // const audio = await engineRef.current.synthesize(text, speakerId, noiseScale, lengthScale);
-      // await play(audio);
+      // await play(out);
+      const audio = await engineRef.current.synthesize(text, speakerId, noiseScale, lengthScale);
+      await play(audio);
     } finally {
       setProcessing(false);
     }

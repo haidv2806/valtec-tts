@@ -1,7 +1,7 @@
 /**
- * Vietnamese Grapheme-to-Phoneme (G2P) Converter for React Native (Expo)
+ * Vietnamese Grapheme-to-Phoneme (G2P) Converter for Browser
  * Ported from viphoneme library (https://github.com/v-nhandt21/Viphoneme)
- *
+ * 
  * This implements the full Vietnamese phonemizer logic including:
  * - Onset detection (trigraphs like 'ngh', digraphs like 'ng', 'nh', 'ch')
  * - Nucleus (vowel) conversion with diphthongs
@@ -66,7 +66,7 @@ const Cus_offglides = {
     'âu': 'ɤ̆w', 'ấu': 'ɤ̆w', 'ầu': 'ɤ̆w', 'ẩu': 'ɤ̆w', 'ẫu': 'ɤ̆w', 'ậu': 'ɤ̆w',
     'eo': 'ew', 'éo': 'ew', 'èo': 'ew', 'ẻo': 'ew', 'ẽo': 'ew', 'ẹo': 'ew',
     'iu': 'iw', 'íu': 'iw', 'ìu': 'iw', 'ỉu': 'iw', 'ĩu': 'iw', 'ịu': 'iw',
-    'oi': 'ɔj', 'ói': 'ɔj', 'òi': 'ɔj', 'ỏi': 'ɔj', 'õĩ': 'ɔj', 'ọi': 'ɔj',
+    'oi': 'ɔj', 'ói': 'ɔj', 'òi': 'ɔj', 'ỏi': 'ɔj', 'õi': 'ɔj', 'ọi': 'ɔj',
     'ôi': 'oj', 'ối': 'oj', 'ồi': 'oj', 'ổi': 'oj', 'ỗi': 'oj', 'ội': 'oj',
     'ui': 'uj', 'úi': 'uj', 'ùi': 'uj', 'ủi': 'uj', 'ũi': 'uj', 'ụi': 'uj',
     'uy': 'ʷi', 'úy': 'uj', 'ùy': 'uj', 'ủy': 'uj', 'ũy': 'uj', 'ụy': 'uj',
@@ -275,7 +275,7 @@ function trans(word) {
 
 /**
  * Convert a word to IPA string
- * @param {string} word
+ * @param {string} word 
  * @returns {string} IPA representation with tone
  */
 function wordToIPA(word) {
@@ -509,12 +509,18 @@ function testG2P() {
     }
 }
 
-// Export cho React Native/Expo sử dụng ES6 modules
-export const VietnameseG2P = {
-    textToPhonemes,
-    addBlanks,
-    wordToIPA,
-    trans,
-    testG2P // Bao gồm cả testG2P để dễ dàng kiểm thử
-};
+// Export for browser
+if (typeof window !== 'undefined') {
+    window.VietnameseG2P = {
+        textToPhonemes,
+        addBlanks,
+        wordToIPA,
+        trans,
+        testG2P
+    };
+}
 
+// Export for Node.js
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { textToPhonemes, addBlanks, wordToIPA, trans, testG2P };
+}
