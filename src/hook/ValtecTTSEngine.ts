@@ -35,82 +35,53 @@ class ValtecTTSEngine {
     isInitialized = false;
 
     constructor() {
-        console.log("ValtecTTSEngine constructor started.");
-        // Removed: this.g2p = new VietnameseG2P(); // Không còn khởi tạo instance
-        console.log("ValtecTTSEngine constructor finished.");
     }
 
     async initialize(): Promise<void> {
-        console.log('[TTS] initialize() START');
 
         try {
             // Configure ONNX Runtime environment
             env.logLevel = 'verbose';
-            console.log("ONNX Runtime env.logLevel configured.");
 
             // Load configuration first
             await this.loadConfig();
             if (!this.ttsConfig) {
                 throw new Error("TTS config not loaded.");
             }
+            
             ValtecTTSEngine.SAMPLE_RATE = this.ttsConfig.sample_rate;
 
             const options: InferenceSession.SessionOptions = {
                 graphOptimizationLevel: 'basic',
-                executionProviders:
-                    Platform.OS === 'ios'
-                        ? ['coreml', 'cpu']
-                        : ['nnapi', 'cpu'],
+                executionProviders: ['cpu']
             };
 
-            console.log(ValtecTTSEngine.TAG, 'Loading ONNX models...');
-            console.log('[TTS] ORT options:', options);
-
             this.sessions.textEncoder = await this.loadModel('text_encoder.onnx', options, require('../../model/text_encoder.onnx'));
-            console.log(ValtecTTSEngine.TAG, '  ✓ text_encoder');
-
             this.sessions.durationPredictor = await this.loadModel('duration_predictor.onnx', options, require('../../model/duration_predictor.onnx'));
-            console.log(ValtecTTSEngine.TAG, '  ✓ duration_predictor');
-
             this.sessions.flow = await this.loadModel('flow.onnx', options, require('../../model/flow.onnx'));
-            console.log(ValtecTTSEngine.TAG, '  ✓ flow');
-
             this.sessions.decoder = await this.loadModel('decoder.onnx', options, require('../../model/decoder.onnx'));
-            console.log(ValtecTTSEngine.TAG, '  ✓ decoder');
-
             this.isInitialized = true;
-            console.log(ValtecTTSEngine.TAG, 'All models loaded successfully');
-            console.log('[TTS] initialize() SUCCESS ✅');
         } catch (e: any) {
-            console.error(ValtecTTSEngine.TAG, `Init failed: ${e.message}`, e);
-            console.error('[TTS] initialize() FAILED ❌');
-            console.error('[TTS] Error message:', e?.message);
-            console.error('[TTS] Full error:', e);
             throw e;
         }
     }
 
     async loadConfig(): Promise<void> {
-        console.log('[TTS] Loading tts_config.json');
         try {
             const config = require('../../model/tts_config.json');
             this.ttsConfig = config as TtsConfig;
 
             // Removed: G2P initialization as it uses static methods and doesn't need explicit initialization.
-            console.log(ValtecTTSEngine.TAG, `Config loaded: ${Object.keys(this.ttsConfig.symbol_to_id).length} symbols, VI language ID: ${this.ttsConfig.language_id_map['VI']}`);
         } catch (error: any) {
-            console.error(ValtecTTSEngine.TAG, `Failed to load config: ${error.message}`, error);
             throw error;
         }
     }
 
     async loadModel(fileName: string, options: InferenceSession.SessionOptions, assetModule: any): Promise<InferenceSession> {
-        console.log(`[TTS] Reading asset for ${fileName}`);
         try {
             const asset = Asset.fromModule(assetModule);
 
             if (!asset.localUri) {
-                console.log(`[TTS] Downloading asset: ${fileName}`);
                 await asset.downloadAsync();
             }
 
@@ -118,15 +89,11 @@ class ValtecTTSEngine {
                 throw new Error(`[TTS] asset.localUri is null for: ${fileName}`);
             }
 
-            console.log(`[TTS] Reading file from: ${asset.localUri}`);
             const base64 = await RNFS.readFile(asset.localUri.replace('file://', ''), 'base64');
-
-            console.log(`[TTS] ${fileName} size (base64 chars): ${base64.length}`);
 
             const modelBuffer = Buffer.from(base64, 'base64');
             return await InferenceSession.create(modelBuffer, options);
         } catch (error: any) {
-            console.error(ValtecTTSEngine.TAG, `Failed to load model ${fileName}: ${error.message}`, error);
             throw error;
         }
     }
@@ -141,15 +108,11 @@ class ValtecTTSEngine {
     ): Promise<Float32Array> {
         if (!this.isInitialized || !this.ttsConfig) throw new Error('TTS Engine not initialized or config missing.');
 
-        console.log(ValtecTTSEngine.TAG, `Synthesizing: "${text}"`);
 
-        // Step 1: Text to phonemes using G2P static methods
-        console.log(ValtecTTSEngine.TAG, 'Step 1/4: Converting text to phonemes...');
         const g2pResult = VietnameseG2P.textToPhonemes(text, this.ttsConfig.symbol_to_id, this.ttsConfig.language_id_map['VI']);
         const { phonemes, tones, languages } = VietnameseG2P.addBlanks(g2pResult, this.ttsConfig.language_id_map['VI']);
 
         const seqLen = phonemes.length;
-        console.log(ValtecTTSEngine.TAG, `Phonemes with blanks (seqLen): ${seqLen}`);
 
         const phoneIds = new Tensor('int64', BigInt64Array.from(phonemes.map(v => BigInt(v))), [1, seqLen]);
         const phoneLengths = new Tensor('int64', BigInt64Array.from([BigInt(seqLen)]), [1]);
@@ -169,8 +132,6 @@ class ValtecTTSEngine {
         let z_output: Tensor | undefined;
 
         try {
-            // Step 2: Text encoder
-            console.log(ValtecTTSEngine.TAG, 'Step 2/4: Encoding text...');
             if (!this.sessions.textEncoder) throw new Error("Text encoder not initialized.");
             const encInputs = {
                 phone_ids: phoneIds,
@@ -192,12 +153,10 @@ class ValtecTTSEngine {
             if (!x_encoded || !m_p || !logs_p || !x_mask || !g) {
                 throw new Error("Text encoder did not return all expected outputs.");
             }
-            console.log('Encoder output shapes: x_encoded', x_encoded.dims, 'g', g.dims);
 
             const channels = m_p.dims[1];
 
             // Step 3: Duration prediction
-            console.log(ValtecTTSEngine.TAG, 'Step 3/4: Predicting durations...');
             if (!this.sessions.durationPredictor) throw new Error("Duration predictor not initialized.");
             const dpInputs = {
                 x: x_encoded,
@@ -224,7 +183,6 @@ class ValtecTTSEngine {
                 totalFrames += dur;
             }
             if (totalFrames === 0) totalFrames = 1;
-            console.log(ValtecTTSEngine.TAG, `Total frames: ${totalFrames}`);
 
             // Expand m_p and logs_p according to durations
             const mPData = m_p.data as Float32Array;
@@ -255,8 +213,6 @@ class ValtecTTSEngine {
             const zPTensor = new Tensor('float32', zPData, [1, channels, totalFrames]);
             const yMask = new Tensor('float32', new Float32Array(totalFrames).fill(1.0), [1, 1, totalFrames]);
 
-            // Step 4: Flow reverse
-            console.log(ValtecTTSEngine.TAG, 'Step 4/4: Generating audio (Flow reverse)...');
             if (!this.sessions.flow) throw new Error("Flow model not initialized.");
             const flowInputs = { z_p: zPTensor, y_mask: yMask, g: g };
             const flowOutputs = await this.sessions.flow.run(flowInputs);
@@ -277,11 +233,9 @@ class ValtecTTSEngine {
             }
             const audio = audioTensor.data as Float32Array;
 
-            console.log(ValtecTTSEngine.TAG, `Generated ${audio.length} samples.`);
             return audio;
 
         } catch (error) {
-            console.error(ValtecTTSEngine.TAG, 'Synthesis error:', error);
             throw error;
         } finally {
             // Tensors are garbage collected
@@ -289,14 +243,12 @@ class ValtecTTSEngine {
     }
 
     async close(): Promise<void> {
-        console.log(ValtecTTSEngine.TAG, 'Closing sessions...');
         if (this.sessions.textEncoder) await this.sessions.textEncoder.release();
         if (this.sessions.durationPredictor) await this.sessions.durationPredictor.release();
         if (this.sessions.flow) await this.sessions.flow.release();
         if (this.sessions.decoder) await this.sessions.decoder.release();
         this.isInitialized = false;
         this.sessions = {};
-        console.log(ValtecTTSEngine.TAG, 'Sessions closed.');
     }
 }
 
