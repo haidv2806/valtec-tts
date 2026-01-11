@@ -15,7 +15,7 @@ export interface TextChunk {
  * @param maxWordsPerChunk Khi không có dấu câu, chia thành các đoạn không quá số từ này.
  * @returns Mảng các TextChunk đã được xử lý.
  */
-export function splitTextIntoChunks(fullText: string, maxWordsPerChunk: number = 10, SHORT_SILENCE: number = 0.2, LONG_SILENCE: number = 0.5): TextChunk[] {
+export function splitTextIntoChunks(fullText: string, maxWordsPerChunk: number = 0, SHORT_SILENCE: number = 0.2, LONG_SILENCE: number = 0.5): TextChunk[] {
     const normalizeText = TextNormalizer.normalize(fullText, {
         lower: true,
         punc: false,
@@ -69,7 +69,7 @@ export function splitTextIntoChunks(fullText: string, maxWordsPerChunk: number =
                 currentWords.push(word);
 
                 // KIỂM TRA QUY TẮC 10 TỪ: Ngắt ngay khi chạm mốc
-                if (currentWords.length === maxWordsPerChunk) {
+                if (currentWords.length === maxWordsPerChunk && maxWordsPerChunk > 0) {
                     chunks.push({
                         text: currentWords.join(' '),
                         addSilenceAfter: 0 // Không nghỉ vì không có dấu câu

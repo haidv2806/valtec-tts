@@ -7,9 +7,7 @@ import {
 import { Buffer } from 'buffer'; // Import Buffer
 import { Asset } from 'expo-asset'; // Sử dụng Expo Asset
 import RNFS from 'react-native-fs'; // Import react-native-fs
-import { Platform } from 'react-native'; // Import Platform
 import VietnameseG2P from './vietnamese_g2p.js' // Giả định VietnameseG2P.js được port đúng
-
 
 interface TtsConfig {
     symbol_to_id: { [key: string]: number };
@@ -102,7 +100,7 @@ class ValtecTTSEngine {
 
     async synthesize(
         text: string,
-        speakerId = 1,
+        speakerId = 0,
         noiseScale = 0.667,
         lengthScale = 1.0 // This parameter will be ignored or set to 1.0 as per web version
     ): Promise<Float32Array> {
