@@ -1,9 +1,9 @@
 {
   "name": "valtec-tts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Offline Vietnamese TTS engine for React Native & Expo (Ported from Valtec TTS)",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
   "scripts": {
     "build": "expo-module build",
     "clean": "expo-module clean",
@@ -52,6 +52,7 @@
   },
   "files": [
     "dist",
+    "build",
     "model",
     "LICENSE",
     "README.md"
