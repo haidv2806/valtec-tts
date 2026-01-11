@@ -4,16 +4,15 @@ import {
     Tensor,
     env,
 } from 'onnxruntime-react-native';
-import { Buffer } from 'buffer'; // Import Buffer
-import { Asset } from 'expo-asset'; // Sử dụng Expo Asset
-import RNFS from 'react-native-fs'; // Import react-native-fs
-import VietnameseG2P from './vietnamese_g2p.js' // Giả định VietnameseG2P.js được port đúng
+import { Buffer } from 'buffer';
+import { Asset } from 'expo-asset';
+import RNFS from 'react-native-fs';
+import VietnameseG2P from './vietnamese_g2p.js'
 
 interface TtsConfig {
     symbol_to_id: { [key: string]: number };
     language_id_map: { [key: string]: number };
     sample_rate: number;
-    // Thêm các thuộc tính khác từ tts_config.json nếu cần
 }
 
 class ValtecTTSEngine {
