@@ -1,51 +1,59 @@
 {
   "name": "valtec-tts",
   "version": "0.1.0",
-  "description": "My new module",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
+  "description": "Offline Vietnamese TTS engine for React Native & Expo (Ported from Valtec TTS)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "expo-module build",
     "clean": "expo-module clean",
     "lint": "expo-module lint",
     "test": "expo-module test",
     "prepare": "expo-module prepare",
-    "prepublishOnly": "expo-module prepublishOnly",
-    "expo-module": "expo-module",
-    "open:ios": "xed example/ios",
-    "open:android": "open -a \"Android Studio\" example/android"
+    "prepublishOnly": "expo-module build",
+    "expo-module": "expo-module"
   },
   "keywords": [
     "react-native",
     "expo",
-    "valtec-tts",
-    "ValtecTts"
+    "tts",
+    "vietnamese-tts",
+    "offline-tts",
+    "onnx"
   ],
-  "repository": "https://github.com/haidv2806/valtec-tts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/haidv2806/valtec-tts.git"
+  },
   "bugs": {
     "url": "https://github.com/haidv2806/valtec-tts/issues"
   },
-  "author": "Đỗ Văn Hải <haidv28062004@gmail.com> (https://github.com/haidv2806)",
-  "license": "MIT",
+  "author": "Đỗ Văn Hải <haidv28062004@gmail.com> (https://github.com/haidv2806)",
+  "license": "CC-BY-NC-4.0",
   "homepage": "https://github.com/haidv2806/valtec-tts#readme",
   "dependencies": {
-    "onnxruntime-react-native": "^1.23.2",
-    "react-native-fs": "^2.20.0",
-    "vinorm": "^1.0.6"
+    "vinorm": "^1.0.6",
+    "buffer": "^6.0.3"
   },
   "devDependencies": {
-    "@types/react": "~19.1.0",
-    "expo": "^54.0.27",
+    "@types/react": "~18.2.0",
+    "expo": "~54.0.0",
     "expo-module-scripts": "^5.0.8",
-    "react-native": "0.81.5"
+    "react-native": "0.81.5",
+    "typescript": "^5.3.0"
   },
   "peerDependencies": {
     "expo": "*",
     "react": "*",
-    "react-native": "*"
+    "react-native": "*",
+    "onnxruntime-react-native": ">=1.14.0",
+    "react-native-fs": "*",
+    "expo-asset": "*"
   },
   "files": [
     "dist",
-    "model"
+    "model",
+    "LICENSE",
+    "README.md"
   ]
 }

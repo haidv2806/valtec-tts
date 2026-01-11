@@ -112,10 +112,10 @@ class ValtecTTSEngine {
 
         const seqLen = phonemes.length;
 
-        const phoneIds = new Tensor('int64', BigInt64Array.from(phonemes.map(v => BigInt(v))), [1, seqLen]);
+        const phoneIds = new Tensor('int64', BigInt64Array.from(phonemes.map((v: number) => BigInt(v))), [1, seqLen]);
         const phoneLengths = new Tensor('int64', BigInt64Array.from([BigInt(seqLen)]), [1]);
-        const toneIds = new Tensor('int64', BigInt64Array.from(tones.map(v => BigInt(v))), [1, seqLen]);
-        const languageIds = new Tensor('int64', BigInt64Array.from(languages.map(v => BigInt(v))), [1, seqLen]);
+        const toneIds = new Tensor('int64', BigInt64Array.from(tones.map((v: number) => BigInt(v))), [1, seqLen]);
+        const languageIds = new Tensor('int64', BigInt64Array.from(languages.map((v: number) => BigInt(v))), [1, seqLen]);
 
         const bert = new Tensor('float32', new Float32Array(1024 * seqLen).fill(0), [1, 1024, seqLen]);
         const jaBert = new Tensor('float32', new Float32Array(768 * seqLen).fill(0), [1, 768, seqLen]);
