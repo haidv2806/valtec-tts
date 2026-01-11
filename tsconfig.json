@@ -4,7 +4,9 @@
   "compilerOptions": {
     "outDir": "./build",
     "allowJs": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
   "include": ["./src"],
   "exclude": ["**/__mocks__/*", "**/__tests__/*", "**/__rsc_tests__/*"]
