@@ -329,6 +329,78 @@ function tokenizeIPA(ipa, symbolToId) {
 }
 
 /**
+ * Convert English word to phonemes using basic character-to-IPA mapping
+ * @param {string} word - English word
+ * @param {object} symbolToId - Symbol to ID mapping
+ * @returns {Array} - Array of phoneme symbols that exist in symbol table
+ */
+function englishToPhonemes(word, symbolToId) {
+    const phonemes = [];
+    word = word.toLowerCase();
+
+    // Basic English character to IPA mapping
+    // Uses phonemes that are likely in the Vietnamese symbol table
+    const charMap = {
+        'a': 'a', 'b': 'b', 'c': 'k', 'd': 'd', 'e': 'e',
+        'f': 'f', 'g': 'g', 'h': 'h', 'i': 'i', 'j': 'j',
+        'k': 'k', 'l': 'l', 'm': 'm', 'n': 'n', 'o': 'o',
+        'p': 'p', 'q': 'k', 'r': 'r', 's': 's', 't': 't',
+        'u': 'u', 'v': 'v', 'w': 'w', 'x': 's', 'y': 'i',
+        'z': 'z'
+    };
+
+    // Common English digraphs and trigraphs
+    let i = 0;
+    while (i < word.length) {
+        let matched = false;
+
+        // Try common English combinations first
+        if (i + 2 <= word.length) {
+            const tri = word.substring(i, i + 2);
+            const triMap = {
+                'th': 'θ',  // 'th' sound - map to closest available or 't'
+                'ch': 'tʃ', // 'ch' sound
+                'sh': 'ʃ',  // 'sh' sound - map to 's' if not available
+                'ph': 'f',  // 'ph' sound
+                'ng': 'ŋ',  // 'ng' sound
+            };
+
+            if (triMap[tri]) {
+                // Check if the IPA exists in symbol table, otherwise fall back
+                const ipa = triMap[tri];
+                if (symbolToId[ipa] !== undefined) {
+                    phonemes.push(ipa);
+                } else if (tri === 'th') {
+                    phonemes.push('t');
+                } else if (tri === 'sh') {
+                    phonemes.push('s');
+                } else {
+                    // Add both characters separately
+                    if (charMap[tri[0]]) phonemes.push(charMap[tri[0]]);
+                    if (charMap[tri[1]]) phonemes.push(charMap[tri[1]]);
+                }
+                i += 2;
+                matched = true;
+            }
+        }
+
+        if (!matched) {
+            const char = word[i];
+            if (charMap[char]) {
+                phonemes.push(charMap[char]);
+            } else if (char.match(/[a-z]/i)) {
+                // Keep alphabetic characters as-is if not mapped
+                phonemes.push(char);
+            }
+            // Skip non-alphabetic characters
+            i++;
+        }
+    }
+
+    return phonemes;
+}
+
+/**
  * Check if character is a Unicode combining mark
  */
 function isCombiningMark(char) {
@@ -378,11 +450,28 @@ function textToPhonemes(text, symbolToId, viLangId) {
             const { ons, nuc, cod, ton, isOOV } = trans(cleanWord);
 
             if (isOOV) {
-                // OOV word - use UNK or pass through
-                const id = symbolToId['UNK'] || 305;
-                phonemes.push(id);
-                tones.push(0); // tone 0 for OOV
-                languages.push(viLangId);
+                // OOV word - try to phonemize as English
+                const englishPhones = englishToPhonemes(cleanWord, symbolToId);
+
+                if (englishPhones.length > 0) {
+                    // Successfully phonemized as English
+                    for (const ph of englishPhones) {
+                        let id = symbolToId[ph];
+                        if (id === undefined) {
+                            // If phoneme not in table, use UNK
+                            id = symbolToId['UNK'] || 305;
+                        }
+                        phonemes.push(id);
+                        tones.push(0); // tone 0 for English
+                        languages.push(viLangId);
+                    }
+                } else {
+                    // Fallback: use UNK for completely unknown word
+                    const id = symbolToId['UNK'] || 305;
+                    phonemes.push(id);
+                    tones.push(0);
+                    languages.push(viLangId);
+                }
             } else {
                 // Combine IPA parts and tokenize char-by-char like Python
                 const ipaStr = [ons, nuc, cod].filter(x => x).join('');
