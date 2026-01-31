@@ -11,6 +11,51 @@
  */
 
 // ============================================================
+// ENGLISH IPA DICTIONARIES
+// ============================================================
+let En_US_Dict = {};
+let En_UK_Dict = {};
+try {
+    En_US_Dict = require('./en_US.json');
+} catch (e) { }
+try {
+    En_UK_Dict = require('./en_UK.json');
+} catch (e) { }
+
+let current_eng_dialect = 'US'; // Default
+
+function setEnglishDialect(dialect) {
+    if (dialect === 'US' || dialect === 'UK') {
+        current_eng_dialect = dialect;
+    }
+}
+
+// English IPA to Vietnamese Phoneme Mapping
+const Eng_IPA_To_VN = {
+    'ə': 'ɤ',   // schwa → Vietnamese mid vowel
+    'ɜː': 'ɤ',  // bird vowel → Vietnamese mid vowel
+    'ɜ': 'ɤ',
+    'ɝ': 'ɤ',   // rhotic bird vowel (US) → Vietnamese mid vowel
+    'θ': 't',   // th → t (no theta in Vietnamese)
+    'ð': 'd',   // th (voiced) → d
+    'æ': 'ɛ',   // cat vowel → Vietnamese open e
+    'ɐ': 'ɤ',   // British 'a' (schwa-like) → Vietnamese mid vowel
+    'ɑː': 'a',  // British 'a' → Vietnamese a
+    'ɒ': 'ɔ',   // British 'o' → Vietnamese open o
+    'ʊ': 'u',   // foot vowel → Vietnamese u
+    'ɪ': 'i',   // kit vowel → Vietnamese i
+    'ʌ': 'ɤ',   // strut vowel → Vietnamese mid vowel
+    'ɔː': 'ɔ',  // thought vowel
+    'uː': 'u',  // goose vowel
+    'iː': 'i',  // fleece vowel
+    'ɹ': 'ʐ',   // English r → Vietnamese retroflex
+    'ʒ': 'z',   // measure → z
+    'dʒ': 'z',  // judge → z
+    'tʃ': 'c',  // church → Vietnamese ch
+    'ʃ': 's',   // ship → s
+};
+
+// ============================================================
 // PHONEME MAPPINGS (from viphoneme T2IPA.py - Cus_* dictionaries)
 // ============================================================
 
@@ -336,9 +381,77 @@ function tokenizeIPA(ipa, symbolToId) {
  */
 function englishToPhonemes(word, symbolToId) {
     const phonemes = [];
-    word = word.toLowerCase();
+    const lowerWord = word.toLowerCase();
 
-    // Basic English character to IPA mapping
+    const dict = current_eng_dialect === 'UK' ? En_UK_Dict : En_US_Dict;
+
+    // Try looking up in the chosen IPA dictionary first
+    if (dict[lowerWord]) {
+        const ipas = dict[lowerWord];
+        // Use the first pronunciation
+        const ipaStr = ipas[0];
+
+        // Tokenize the IPA string based on the model's vocabulary behavior and custom mapping
+        let i = 0;
+        while (i < ipaStr.length) {
+            let matched = false;
+
+            // Try matching multi-character strings from our mapping table first
+            // We'll check substrings up to 3 characters long
+            for (let len = Math.min(3, ipaStr.length - i); len > 0; len--) {
+                const substr = ipaStr.substring(i, i + len);
+
+                // Skip common stress markers and separators
+                if (substr === 'ˈ' || substr === 'ˌ' || substr === ' ') {
+                    i += len;
+                    matched = true;
+                    break;
+                }
+
+                // 1. Check if the substring is in our custom mapping
+                if (Eng_IPA_To_VN[substr] !== undefined) {
+                    const mapped = Eng_IPA_To_VN[substr];
+                    if (mapped !== '') {
+                        phonemes.push(mapped);
+                    }
+                    i += len;
+                    matched = true;
+                    break;
+                }
+
+                // 2. Check if the substring exists in our symbol table
+                if (symbolToId[substr] !== undefined) {
+                    phonemes.push(substr);
+                    i += len;
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (!matched) {
+                const char = ipaStr[i];
+
+                // Skip length markers and stress markers if not matched previously
+                if (char === 'ː' || char === 'ˈ' || char === 'ˌ' || char === ' ') {
+                    i++;
+                    continue;
+                }
+
+                // Final check for single character in symbol table
+                if (symbolToId[char] !== undefined) {
+                    phonemes.push(char);
+                } else {
+                    // If absolutely no match, keep as is
+                    phonemes.push(char);
+                }
+                i++;
+            }
+        }
+
+        return phonemes;
+    }
+
+    // Fallback to basic English character to IPA mapping
     // Uses phonemes that are likely in the Vietnamese symbol table
     const charMap = {
         'a': 'a', 'b': 'b', 'c': 'k', 'd': 'd', 'e': 'e',
@@ -351,12 +464,12 @@ function englishToPhonemes(word, symbolToId) {
 
     // Common English digraphs and trigraphs
     let i = 0;
-    while (i < word.length) {
+    while (i < lowerWord.length) {
         let matched = false;
 
         // Try common English combinations first
-        if (i + 2 <= word.length) {
-            const tri = word.substring(i, i + 2);
+        if (i + 2 <= lowerWord.length) {
+            const tri = lowerWord.substring(i, i + 2);
             const triMap = {
                 'th': 'θ',  // 'th' sound - map to closest available or 't'
                 'ch': 'tʃ', // 'ch' sound
@@ -385,7 +498,7 @@ function englishToPhonemes(word, symbolToId) {
         }
 
         if (!matched) {
-            const char = word[i];
+            const char = lowerWord[i];
             if (charMap[char]) {
                 phonemes.push(charMap[char]);
             } else if (char.match(/[a-z]/i)) {
@@ -605,11 +718,12 @@ if (typeof window !== 'undefined') {
         addBlanks,
         wordToIPA,
         trans,
-        testG2P
+        testG2P,
+        setEnglishDialect
     };
 }
 
 // Export for Node.js
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { textToPhonemes, addBlanks, wordToIPA, trans, testG2P };
+    module.exports = { textToPhonemes, addBlanks, wordToIPA, trans, testG2P, setEnglishDialect };
 }

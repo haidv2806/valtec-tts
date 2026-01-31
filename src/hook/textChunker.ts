@@ -22,10 +22,6 @@ export function splitTextIntoChunks(fullText: string, maxWordsPerChunk: number =
         unknown: false,
     });
 
-    console.log(
-        normalizeText
-    );
-
     const chunks: TextChunk[] = [];
     const lines = normalizeText.split('\n');
 
