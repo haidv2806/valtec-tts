@@ -10,6 +10,41 @@
  * - Onglides, offglides combinations
  */
 
+const engToIpa = require('../ipa_js/index.js');
+
+let current_eng_dialect = 'US'; // Default
+
+function setEnglishDialect(dialect) {
+    if (dialect === 'US' || dialect === 'UK') {
+        current_eng_dialect = dialect;
+    }
+}
+
+// English IPA to Vietnamese Phoneme Mapping
+const Eng_IPA_To_VN = {
+    'ə': 'ɤ',   // schwa → Vietnamese mid vowel
+    'ɜː': 'ɤ',  // bird vowel → Vietnamese mid vowel
+    'ɜ': 'ɤ',
+    'ɝ': 'ɤ',   // rhotic bird vowel (US) → Vietnamese mid vowel
+    'θ': 't',   // th → t (no theta in Vietnamese)
+    'ð': 'd',   // th (voiced) → d
+    'æ': 'ɛ',   // cat vowel → Vietnamese open e
+    'ɐ': 'ɤ',   // British 'a' (schwa-like) → Vietnamese mid vowel
+    'ɑː': 'a',  // British 'a' → Vietnamese a
+    'ɒ': 'ɔ',   // British 'o' → Vietnamese open o
+    'ʊ': 'u',   // foot vowel → Vietnamese u
+    'ɪ': 'i',   // kit vowel → Vietnamese i
+    'ʌ': 'ɤ',   // strut vowel → Vietnamese mid vowel
+    'ɔː': 'ɔ',  // thought vowel
+    'uː': 'u',  // goose vowel
+    'iː': 'i',  // fleece vowel
+    'ɹ': 'ʐ',   // English r → Vietnamese retroflex
+    'ʒ': 'z',   // measure → z
+    'dʒ': 'z',  // judge → z
+    'tʃ': 'c',  // church → Vietnamese ch
+    'ʃ': 's',   // ship → s
+};
+
 // ============================================================
 // PHONEME MAPPINGS (from viphoneme T2IPA.py - Cus_* dictionaries)
 // ============================================================
@@ -328,71 +363,110 @@ function tokenizeIPA(ipa, symbolToId) {
     return tokens;
 }
 
-/**
- * Convert English word to phonemes using basic character-to-IPA mapping
- * @param {string} word - English word
- * @param {object} symbolToId - Symbol to ID mapping
- * @returns {Array} - Array of phoneme symbols that exist in symbol table
- */
 function englishToPhonemes(word, symbolToId) {
     const phonemes = [];
-    word = word.toLowerCase();
+    const lowerWord = word.toLowerCase();
 
-    // Basic English character to IPA mapping
-    // Uses phonemes that are likely in the Vietnamese symbol table
-    const charMap = {
-        'a': 'a', 'b': 'b', 'c': 'k', 'd': 'd', 'e': 'e',
-        'f': 'f', 'g': 'g', 'h': 'h', 'i': 'i', 'j': 'j',
-        'k': 'k', 'l': 'l', 'm': 'm', 'n': 'n', 'o': 'o',
-        'p': 'p', 'q': 'k', 'r': 'r', 's': 's', 't': 't',
-        'u': 'u', 'v': 'v', 'w': 'w', 'x': 's', 'y': 'i',
-        'z': 'z'
-    };
+    // Use the new ipa_js converter
+    const ipaStr = engToIpa.convert(lowerWord);
 
-    // Common English digraphs and trigraphs
+    // If word not found in dictionary, ipa_js might return it with '*'
+    if (ipaStr.endsWith('*') || ipaStr === lowerWord) {
+        // Fallback to basic English character to IPA mapping
+        const charMap = {
+            'a': 'a', 'b': 'b', 'c': 'k', 'd': 'd', 'e': 'e',
+            'f': 'f', 'g': 'g', 'h': 'h', 'i': 'i', 'j': 'j',
+            'k': 'k', 'l': 'l', 'm': 'm', 'n': 'n', 'o': 'o',
+            'p': 'p', 'q': 'k', 'r': 'r', 's': 's', 't': 't',
+            'u': 'u', 'v': 'v', 'w': 'w', 'x': 's', 'y': 'i',
+            'z': 'z'
+        };
+
+        let i = 0;
+        const cleanIpa = ipaStr.replace('*', '');
+        while (i < cleanIpa.length) {
+            let matched = false;
+            if (i + 1 < cleanIpa.length) {
+                const digraph = cleanIpa.substring(i, i + 2);
+                const digraphMap = {
+                    'th': 'θ', 'ch': 'tʃ', 'sh': 'ʃ', 'ph': 'f', 'ng': 'ŋ',
+                };
+                if (digraphMap[digraph]) {
+                    const ipa = digraphMap[digraph];
+                    if (symbolToId[ipa] !== undefined) {
+                        phonemes.push(ipa);
+                    } else if (digraph === 'th') {
+                        phonemes.push('t');
+                    } else if (digraph === 'sh') {
+                        phonemes.push('s');
+                    } else {
+                        if (charMap[digraph[0]]) phonemes.push(charMap[digraph[0]]);
+                        if (charMap[digraph[1]]) phonemes.push(charMap[digraph[1]]);
+                    }
+                    i += 2;
+                    matched = true;
+                }
+            }
+            if (!matched) {
+                const char = cleanIpa[i];
+                if (charMap[char]) {
+                    phonemes.push(charMap[char]);
+                } else if (char.match(/[a-z]/i)) {
+                    phonemes.push(char);
+                }
+                i++;
+            }
+        }
+        return phonemes;
+    }
+
+    // Process the IPA string returned by ipa_js
     let i = 0;
-    while (i < word.length) {
+    while (i < ipaStr.length) {
         let matched = false;
 
-        // Try common English combinations first
-        if (i + 2 <= word.length) {
-            const tri = word.substring(i, i + 2);
-            const triMap = {
-                'th': 'θ',  // 'th' sound - map to closest available or 't'
-                'ch': 'tʃ', // 'ch' sound
-                'sh': 'ʃ',  // 'sh' sound - map to 's' if not available
-                'ph': 'f',  // 'ph' sound
-                'ng': 'ŋ',  // 'ng' sound
-            };
+        // Try matching longest possible substring from symbol table first
+        for (let len = Math.min(3, ipaStr.length - i); len > 0; len--) {
+            const substr = ipaStr.substring(i, i + len);
 
-            if (triMap[tri]) {
-                // Check if the IPA exists in symbol table, otherwise fall back
-                const ipa = triMap[tri];
-                if (symbolToId[ipa] !== undefined) {
-                    phonemes.push(ipa);
-                } else if (tri === 'th') {
-                    phonemes.push('t');
-                } else if (tri === 'sh') {
-                    phonemes.push('s');
-                } else {
-                    // Add both characters separately
-                    if (charMap[tri[0]]) phonemes.push(charMap[tri[0]]);
-                    if (charMap[tri[1]]) phonemes.push(charMap[tri[1]]);
-                }
-                i += 2;
+            // Skip common stress markers and separators
+            if (substr === 'ˈ' || substr === 'ˌ' || substr === ' ') {
+                i += len;
                 matched = true;
+                break;
+            }
+
+            // 1. Check if the original IPA substring exists in our symbol table
+            if (symbolToId[substr] !== undefined) {
+                phonemes.push(substr);
+                i += len;
+                matched = true;
+                break;
+            }
+
+            // 2. Check if the substring is in our custom mapping (as a fallback)
+            if (Eng_IPA_To_VN[substr] !== undefined) {
+                const mapped = Eng_IPA_To_VN[substr];
+                if (mapped !== '') {
+                    phonemes.push(mapped);
+                }
+                i += len;
+                matched = true;
+                break;
             }
         }
 
         if (!matched) {
-            const char = word[i];
-            if (charMap[char]) {
-                phonemes.push(charMap[char]);
-            } else if (char.match(/[a-z]/i)) {
-                // Keep alphabetic characters as-is if not mapped
-                phonemes.push(char);
+            const char = ipaStr[i];
+
+            // Skip length markers if not matched previously
+            if (char === 'ː') {
+                i++;
+                continue;
             }
-            // Skip non-alphabetic characters
+
+            // Final fallback: keep the character even if not in symbol table (it will be handled as UNK later)
+            phonemes.push(char);
             i++;
         }
     }
@@ -605,11 +679,12 @@ if (typeof window !== 'undefined') {
         addBlanks,
         wordToIPA,
         trans,
-        testG2P
+        testG2P,
+        setEnglishDialect
     };
 }
 
 // Export for Node.js
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { textToPhonemes, addBlanks, wordToIPA, trans, testG2P };
+    module.exports = { textToPhonemes, addBlanks, wordToIPA, trans, testG2P, setEnglishDialect };
 }
