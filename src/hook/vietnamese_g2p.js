@@ -10,12 +10,7 @@
  * - Onglides, offglides combinations
  */
 
-let engToIpa = { convert: (w) => w }; // Fallback
-try {
-    engToIpa = require('../ipa_js');
-} catch (e) {
-    console.warn('ipa_js not found or cannot be loaded:', e);
-}
+const engToIpa = require('../ipa_js/index.js');
 
 let current_eng_dialect = 'US'; // Default
 

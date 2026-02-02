@@ -1,9 +1,5 @@
-const fs = require('fs');
-const path = require('path');
 const syllables = require('./syllables');
-
-const phonesPath = path.join(__dirname, './phones.json');
-const phones = JSON.parse(fs.readFileSync(phonesPath, 'utf8'));
+const phones = require('./phones.json');
 
 function stressType(stress) {
     stress = stress.toLowerCase();

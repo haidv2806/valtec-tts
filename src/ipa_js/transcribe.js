@@ -1,13 +1,10 @@
-const fs = require('fs');
-const path = require('path');
 const stress = require('./stress');
 
-const CMU_DICT_PATH = path.join(__dirname, './CMU_dict.json');
 let CMU_DICT = null;
 
 function loadDict() {
     if (!CMU_DICT) {
-        CMU_DICT = JSON.parse(fs.readFileSync(CMU_DICT_PATH, 'utf8'));
+        CMU_DICT = require('./CMU_dict.json');
     }
     return CMU_DICT;
 }

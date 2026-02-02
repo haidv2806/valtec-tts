@@ -1,8 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const phonesPath = path.join(__dirname, './phones.json');
-const PHONES = JSON.parse(fs.readFileSync(phonesPath, 'utf8'));
+const PHONES = require('./phones.json');
 
 const hiatus = [
     ["er", "iy"], ["iy", "ow"], ["uw", "ow"], ["iy", "ah"],
