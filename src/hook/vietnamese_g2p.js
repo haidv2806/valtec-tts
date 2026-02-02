@@ -371,7 +371,6 @@ function englishToPhonemes(word, symbolToId) {
     const ipaStr = engToIpa.convert(lowerWord);
 
     // If word not found in dictionary, ipa_js might return it with '*'
-    // We check if it's mostly alphabetical but not IPA
     if (ipaStr.endsWith('*') || ipaStr === lowerWord) {
         // Fallback to basic English character to IPA mapping
         const charMap = {
@@ -426,8 +425,7 @@ function englishToPhonemes(word, symbolToId) {
     while (i < ipaStr.length) {
         let matched = false;
 
-        // Try matching multi-character strings from our mapping table first
-        // We'll check substrings up to 3 characters long
+        // Try matching longest possible substring from symbol table first
         for (let len = Math.min(3, ipaStr.length - i); len > 0; len--) {
             const substr = ipaStr.substring(i, i + len);
 
@@ -438,7 +436,15 @@ function englishToPhonemes(word, symbolToId) {
                 break;
             }
 
-            // 1. Check if the substring is in our custom mapping
+            // 1. Check if the original IPA substring exists in our symbol table
+            if (symbolToId[substr] !== undefined) {
+                phonemes.push(substr);
+                i += len;
+                matched = true;
+                break;
+            }
+
+            // 2. Check if the substring is in our custom mapping (as a fallback)
             if (Eng_IPA_To_VN[substr] !== undefined) {
                 const mapped = Eng_IPA_To_VN[substr];
                 if (mapped !== '') {
@@ -448,32 +454,19 @@ function englishToPhonemes(word, symbolToId) {
                 matched = true;
                 break;
             }
-
-            // 2. Check if the substring exists in our symbol table
-            if (symbolToId[substr] !== undefined) {
-                phonemes.push(substr);
-                i += len;
-                matched = true;
-                break;
-            }
         }
 
         if (!matched) {
             const char = ipaStr[i];
 
-            // Skip length markers and stress markers if not matched previously
-            if (char === 'ː' || char === 'ˈ' || char === 'ˌ' || char === ' ') {
+            // Skip length markers if not matched previously
+            if (char === 'ː') {
                 i++;
                 continue;
             }
 
-            // Final check for single character in symbol table
-            if (symbolToId[char] !== undefined) {
-                phonemes.push(char);
-            } else {
-                // If absolutely no match, keep as is
-                phonemes.push(char);
-            }
+            // Final fallback: keep the character even if not in symbol table (it will be handled as UNK later)
+            phonemes.push(char);
             i++;
         }
     }
