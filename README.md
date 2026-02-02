@@ -4,7 +4,7 @@
 
 ## Demo Video
 
-<video src="demo.mov" width="100%" controls></video>
+[![Demo Video](https://img.youtube.com/vi/TV6AB0CYhjk/0.jpg)](https://www.youtube.com/watch?v=TV6AB0CYhjk)
 
 `valtec-tts` leverages ONNX Runtime to run VITS-based neural network models directly on your mobile device. It supports multiple speakers, adjustable speed/noise, and intelligent text chunking for natural prosody.
 
