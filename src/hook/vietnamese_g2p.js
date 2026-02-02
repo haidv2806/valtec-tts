@@ -10,17 +10,12 @@
  * - Onglides, offglides combinations
  */
 
-// ============================================================
-// ENGLISH IPA DICTIONARIES
-// ============================================================
-let En_US_Dict = {};
-let En_UK_Dict = {};
+let engToIpa = { convert: (w) => w }; // Fallback
 try {
-    En_US_Dict = require('./en_US.json');
-} catch (e) { }
-try {
-    En_UK_Dict = require('./en_UK.json');
-} catch (e) { }
+    engToIpa = require('../ipa_js');
+} catch (e) {
+    console.warn('ipa_js not found or cannot be loaded:', e);
+}
 
 let current_eng_dialect = 'US'; // Default
 
@@ -373,139 +368,117 @@ function tokenizeIPA(ipa, symbolToId) {
     return tokens;
 }
 
-/**
- * Convert English word to phonemes using basic character-to-IPA mapping
- * @param {string} word - English word
- * @param {object} symbolToId - Symbol to ID mapping
- * @returns {Array} - Array of phoneme symbols that exist in symbol table
- */
 function englishToPhonemes(word, symbolToId) {
     const phonemes = [];
     const lowerWord = word.toLowerCase();
 
-    const dict = current_eng_dialect === 'UK' ? En_UK_Dict : En_US_Dict;
+    // Use the new ipa_js converter
+    const ipaStr = engToIpa.convert(lowerWord);
 
-    // Try looking up in the chosen IPA dictionary first
-    if (dict[lowerWord]) {
-        const ipas = dict[lowerWord];
-        // Use the first pronunciation
-        const ipaStr = ipas[0];
+    // If word not found in dictionary, ipa_js might return it with '*'
+    // We check if it's mostly alphabetical but not IPA
+    if (ipaStr.endsWith('*') || ipaStr === lowerWord) {
+        // Fallback to basic English character to IPA mapping
+        const charMap = {
+            'a': 'a', 'b': 'b', 'c': 'k', 'd': 'd', 'e': 'e',
+            'f': 'f', 'g': 'g', 'h': 'h', 'i': 'i', 'j': 'j',
+            'k': 'k', 'l': 'l', 'm': 'm', 'n': 'n', 'o': 'o',
+            'p': 'p', 'q': 'k', 'r': 'r', 's': 's', 't': 't',
+            'u': 'u', 'v': 'v', 'w': 'w', 'x': 's', 'y': 'i',
+            'z': 'z'
+        };
 
-        // Tokenize the IPA string based on the model's vocabulary behavior and custom mapping
         let i = 0;
-        while (i < ipaStr.length) {
+        const cleanIpa = ipaStr.replace('*', '');
+        while (i < cleanIpa.length) {
             let matched = false;
-
-            // Try matching multi-character strings from our mapping table first
-            // We'll check substrings up to 3 characters long
-            for (let len = Math.min(3, ipaStr.length - i); len > 0; len--) {
-                const substr = ipaStr.substring(i, i + len);
-
-                // Skip common stress markers and separators
-                if (substr === 'ˈ' || substr === 'ˌ' || substr === ' ') {
-                    i += len;
-                    matched = true;
-                    break;
-                }
-
-                // 1. Check if the substring is in our custom mapping
-                if (Eng_IPA_To_VN[substr] !== undefined) {
-                    const mapped = Eng_IPA_To_VN[substr];
-                    if (mapped !== '') {
-                        phonemes.push(mapped);
+            if (i + 1 < cleanIpa.length) {
+                const digraph = cleanIpa.substring(i, i + 2);
+                const digraphMap = {
+                    'th': 'θ', 'ch': 'tʃ', 'sh': 'ʃ', 'ph': 'f', 'ng': 'ŋ',
+                };
+                if (digraphMap[digraph]) {
+                    const ipa = digraphMap[digraph];
+                    if (symbolToId[ipa] !== undefined) {
+                        phonemes.push(ipa);
+                    } else if (digraph === 'th') {
+                        phonemes.push('t');
+                    } else if (digraph === 'sh') {
+                        phonemes.push('s');
+                    } else {
+                        if (charMap[digraph[0]]) phonemes.push(charMap[digraph[0]]);
+                        if (charMap[digraph[1]]) phonemes.push(charMap[digraph[1]]);
                     }
-                    i += len;
+                    i += 2;
                     matched = true;
-                    break;
-                }
-
-                // 2. Check if the substring exists in our symbol table
-                if (symbolToId[substr] !== undefined) {
-                    phonemes.push(substr);
-                    i += len;
-                    matched = true;
-                    break;
                 }
             }
-
             if (!matched) {
-                const char = ipaStr[i];
-
-                // Skip length markers and stress markers if not matched previously
-                if (char === 'ː' || char === 'ˈ' || char === 'ˌ' || char === ' ') {
-                    i++;
-                    continue;
-                }
-
-                // Final check for single character in symbol table
-                if (symbolToId[char] !== undefined) {
-                    phonemes.push(char);
-                } else {
-                    // If absolutely no match, keep as is
+                const char = cleanIpa[i];
+                if (charMap[char]) {
+                    phonemes.push(charMap[char]);
+                } else if (char.match(/[a-z]/i)) {
                     phonemes.push(char);
                 }
                 i++;
             }
         }
-
         return phonemes;
     }
 
-    // Fallback to basic English character to IPA mapping
-    // Uses phonemes that are likely in the Vietnamese symbol table
-    const charMap = {
-        'a': 'a', 'b': 'b', 'c': 'k', 'd': 'd', 'e': 'e',
-        'f': 'f', 'g': 'g', 'h': 'h', 'i': 'i', 'j': 'j',
-        'k': 'k', 'l': 'l', 'm': 'm', 'n': 'n', 'o': 'o',
-        'p': 'p', 'q': 'k', 'r': 'r', 's': 's', 't': 't',
-        'u': 'u', 'v': 'v', 'w': 'w', 'x': 's', 'y': 'i',
-        'z': 'z'
-    };
-
-    // Common English digraphs and trigraphs
+    // Process the IPA string returned by ipa_js
     let i = 0;
-    while (i < lowerWord.length) {
+    while (i < ipaStr.length) {
         let matched = false;
 
-        // Try common English combinations first
-        if (i + 2 <= lowerWord.length) {
-            const tri = lowerWord.substring(i, i + 2);
-            const triMap = {
-                'th': 'θ',  // 'th' sound - map to closest available or 't'
-                'ch': 'tʃ', // 'ch' sound
-                'sh': 'ʃ',  // 'sh' sound - map to 's' if not available
-                'ph': 'f',  // 'ph' sound
-                'ng': 'ŋ',  // 'ng' sound
-            };
+        // Try matching multi-character strings from our mapping table first
+        // We'll check substrings up to 3 characters long
+        for (let len = Math.min(3, ipaStr.length - i); len > 0; len--) {
+            const substr = ipaStr.substring(i, i + len);
 
-            if (triMap[tri]) {
-                // Check if the IPA exists in symbol table, otherwise fall back
-                const ipa = triMap[tri];
-                if (symbolToId[ipa] !== undefined) {
-                    phonemes.push(ipa);
-                } else if (tri === 'th') {
-                    phonemes.push('t');
-                } else if (tri === 'sh') {
-                    phonemes.push('s');
-                } else {
-                    // Add both characters separately
-                    if (charMap[tri[0]]) phonemes.push(charMap[tri[0]]);
-                    if (charMap[tri[1]]) phonemes.push(charMap[tri[1]]);
-                }
-                i += 2;
+            // Skip common stress markers and separators
+            if (substr === 'ˈ' || substr === 'ˌ' || substr === ' ') {
+                i += len;
                 matched = true;
+                break;
+            }
+
+            // 1. Check if the substring is in our custom mapping
+            if (Eng_IPA_To_VN[substr] !== undefined) {
+                const mapped = Eng_IPA_To_VN[substr];
+                if (mapped !== '') {
+                    phonemes.push(mapped);
+                }
+                i += len;
+                matched = true;
+                break;
+            }
+
+            // 2. Check if the substring exists in our symbol table
+            if (symbolToId[substr] !== undefined) {
+                phonemes.push(substr);
+                i += len;
+                matched = true;
+                break;
             }
         }
 
         if (!matched) {
-            const char = lowerWord[i];
-            if (charMap[char]) {
-                phonemes.push(charMap[char]);
-            } else if (char.match(/[a-z]/i)) {
-                // Keep alphabetic characters as-is if not mapped
+            const char = ipaStr[i];
+
+            // Skip length markers and stress markers if not matched previously
+            if (char === 'ː' || char === 'ˈ' || char === 'ˌ' || char === ' ') {
+                i++;
+                continue;
+            }
+
+            // Final check for single character in symbol table
+            if (symbolToId[char] !== undefined) {
+                phonemes.push(char);
+            } else {
+                // If absolutely no match, keep as is
                 phonemes.push(char);
             }
-            // Skip non-alphabetic characters
             i++;
         }
     }
