@@ -1,16 +1,22 @@
 # Valtec TTS
 
-**High-quality, Offline Vietnamese Text-to-Speech (TTS) engine for React Native.**
+**High-quality, Offline Vietnamese & English Text-to-Speech (TTS) engine for React Native.**
+
+## Demo Video
+
+<video src="demo.mov" width="100%" controls></video>
 
 `valtec-tts` leverages ONNX Runtime to run VITS-based neural network models directly on your mobile device. It supports multiple speakers, adjustable speed/noise, and intelligent text chunking for natural prosody.
+
 
 ## Features
 
 * **100% Offline:** No internet connection required after installation.
-* **Vietnamese Optimized:** Built specifically for Vietnamese phonemes and tones.
+* **Vietnamese & English Supported:** Optimized for both Vietnamese and English phonemes.
 * **Multi-Speaker:** Support for switching between different voice identities.
 * **Customizable:** Adjust speech speed (length scale) and variability (noise scale).
 * **Smart Chunking:** Includes utilities to normalize text and split long paragraphs with natural pauses.
+
 
 ## Installation
 
@@ -173,7 +179,8 @@ Loads the ONNX models and configuration. Must be called before synthesis.
 
 Converts text to raw audio data.
 
-* `text` (string): The input text (Vietnamese).
+* `text` (string): The input text (Vietnamese or English).
+
 * `speakerId` (number): ID of the speaker voice (Default: `0`).
 * `noiseScale` (number): Controls audio variability/emotion (Default: `0.667`).
 * `lengthScale` (number): Controls speed. Lower is faster, Higher is slower (Default: `1.0`).

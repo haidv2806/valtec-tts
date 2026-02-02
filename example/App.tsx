@@ -113,7 +113,7 @@ export default function App() {
     setProcessing(true);
 
     try {
-      const chunks: TextChunk[] = splitTextIntoChunks(text, 10);
+      const chunks: TextChunk[] = splitTextIntoChunks(text, 0);
       const buffers: Float32Array[] = [];
 
       for (const c of chunks) {
