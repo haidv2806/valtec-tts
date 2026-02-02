@@ -19,7 +19,7 @@
     "tts",
     "vietnamese-tts",
     "offline-tts",
-    "onnx"
+    "valtec-tts"
   ],
   "repository": {
     "type": "git",
@@ -32,23 +32,25 @@
   "license": "CC-BY-NC-4.0",
   "homepage": "https://github.com/haidv2806/valtec-tts#readme",
   "dependencies": {
-    "vinorm": "^1.0.6",
-    "buffer": "^6.0.3"
+    "buffer": "^6.0.3",
+    "vinorm": "^1.0.6"
   },
   "devDependencies": {
     "@types/react": "~18.2.0",
     "expo": "~54.0.0",
     "expo-module-scripts": "^5.0.8",
+    "onnxruntime-react-native": "^1.23.2",
     "react-native": "0.81.5",
+    "react-native-fs": "^2.20.0",
     "typescript": "^5.3.0"
   },
   "peerDependencies": {
     "expo": "*",
+    "expo-asset": "*",
+    "onnxruntime-react-native": ">=1.14.0",
     "react": "*",
     "react-native": "*",
-    "onnxruntime-react-native": ">=1.14.0",
-    "react-native-fs": "*",
-    "expo-asset": "*"
+    "react-native-fs": "*"
   },
   "files": [
     "dist",
