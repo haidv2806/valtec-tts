@@ -1,3 +1,0 @@
----
-license: cc-by-nc-2.0
----
