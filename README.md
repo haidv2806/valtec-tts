@@ -92,11 +92,18 @@ const App = () => {
   useEffect(() => {
     const runTTS = async () => {
       try {
-        // 1. Initialize the Engine
+        // 1. Initialize the Engine instance
         const engine = new ValtecTTSEngine();
+
+        // 2. Download the Models (Only needed once, it skips if already downloaded)
+        // You can also pass an onProgress callback here:
+        // await engine.downloadModels((prog, file) => console.log(prog));
+        await engine.downloadModels();
+
+        // 3. Load Models into Memory
         await engine.initialize();
 
-        // 2. Synthesize Text
+        // 4. Synthesize Text
         // Returns a Float32Array (PCM Data)
         const pcmData = await engine.synthesize(
           "Xin chào, đây là giọng đọc tiếng Việt.", 
@@ -169,9 +176,21 @@ const speakLongText = async (engine, longText) => {
 
 ### `ValtecTTSEngine`
 
+#### `downloadModels(onProgress?: (progress: number, fileName: string) => void)`
+
+Downloads the required ONNX models and configuration into the device's local storage. This must be called before `initialize()` if the models haven't been downloaded yet. It skips downloading if the files already exist.
+
+* **Returns:** `Promise<void>`
+
+#### `deleteModels()`
+
+Deletes the downloaded ONNX models from the device's local storage to free up space.
+
+* **Returns:** `Promise<void>`
+
 #### `initialize()`
 
-Loads the ONNX models and configuration. Must be called before synthesis.
+Loads the downloaded ONNX models and configuration into memory. Must be called after `downloadModels` and before `synthesize`.
 
 * **Returns:** `Promise<void>`
 

@@ -45,7 +45,7 @@ class ValtecTTSEngine {
             if (!this.ttsConfig) {
                 throw new Error("TTS config not loaded.");
             }
-            
+
             ValtecTTSEngine.SAMPLE_RATE = this.ttsConfig.sample_rate;
 
             const options: InferenceSession.SessionOptions = {
@@ -53,20 +53,84 @@ class ValtecTTSEngine {
                 executionProviders: ['cpu']
             };
 
-            this.sessions.textEncoder = await this.loadModel('text_encoder.onnx', options, require('../../model/text_encoder.onnx'));
-            this.sessions.durationPredictor = await this.loadModel('duration_predictor.onnx', options, require('../../model/duration_predictor.onnx'));
-            this.sessions.flow = await this.loadModel('flow.onnx', options, require('../../model/flow.onnx'));
-            this.sessions.decoder = await this.loadModel('decoder.onnx', options, require('../../model/decoder.onnx'));
+            this.sessions.textEncoder = await this.loadModel('text_encoder.onnx', options);
+            this.sessions.durationPredictor = await this.loadModel('duration_predictor.onnx', options);
+            this.sessions.flow = await this.loadModel('flow.onnx', options);
+            this.sessions.decoder = await this.loadModel('decoder.onnx', options);
             this.isInitialized = true;
         } catch (e: any) {
             throw e;
         }
     }
 
+    private getModelDirectory(): string {
+        return `${RNFS.DocumentDirectoryPath}/valtec_models`;
+    }
+
+    private downloadUrls = {
+        'tts_config.json': 'https://raw.githubusercontent.com/haidv2806/valtec-tts/main/model/tts_config.json',
+        'text_encoder.onnx': 'https://raw.githubusercontent.com/haidv2806/valtec-tts/main/model/text_encoder.onnx',
+        'duration_predictor.onnx': 'https://raw.githubusercontent.com/haidv2806/valtec-tts/main/model/duration_predictor.onnx',
+        'flow.onnx': 'https://raw.githubusercontent.com/haidv2806/valtec-tts/main/model/flow.onnx',
+        'decoder.onnx': 'https://raw.githubusercontent.com/haidv2806/valtec-tts/main/model/decoder.onnx'
+    };
+
+    async downloadModels(onProgress?: (progress: number, fileName: string) => void): Promise<void> {
+        const modelDir = this.getModelDirectory();
+
+        // Ensure directory exists
+        const dirExists = await RNFS.exists(modelDir);
+        if (!dirExists) {
+            await RNFS.mkdir(modelDir);
+        }
+
+        const filesToDownload = Object.keys(this.downloadUrls) as Array<keyof typeof this.downloadUrls>;
+
+        for (const fileName of filesToDownload) {
+            const destPath = `${modelDir}/${fileName}`;
+            const fileExists = await RNFS.exists(destPath);
+
+            if (!fileExists) {
+                const url = this.downloadUrls[fileName];
+
+                const downloadOptions = {
+                    fromUrl: url,
+                    toFile: destPath,
+                    progress: (res: any) => {
+                        if (onProgress && res.contentLength > 0) {
+                            const progressPercent = (res.bytesWritten / res.contentLength) * 100;
+                            onProgress(progressPercent, fileName);
+                        }
+                    },
+                };
+
+                const downloadResult = await RNFS.downloadFile(downloadOptions).promise;
+                if (downloadResult.statusCode !== 200) {
+                    throw new Error(`Failed to download ${fileName}. Status code: ${downloadResult.statusCode}`);
+                }
+            }
+        }
+    }
+
+    async deleteModels(): Promise<void> {
+        const modelDir = this.getModelDirectory();
+        const dirExists = await RNFS.exists(modelDir);
+        if (dirExists) {
+            await RNFS.unlink(modelDir);
+        }
+    }
+
     async loadConfig(): Promise<void> {
         try {
-            const config = require('../../model/tts_config.json');
-            this.ttsConfig = config as TtsConfig;
+            const configPath = `${this.getModelDirectory()}/tts_config.json`;
+            const configExists = await RNFS.exists(configPath);
+
+            if (!configExists) {
+                throw new Error("Config file not found. Please download models first.");
+            }
+
+            const configString = await RNFS.readFile(configPath, 'utf8');
+            this.ttsConfig = JSON.parse(configString) as TtsConfig;
 
             // Removed: G2P initialization as it uses static methods and doesn't need explicit initialization.
         } catch (error: any) {
@@ -74,19 +138,16 @@ class ValtecTTSEngine {
         }
     }
 
-    async loadModel(fileName: string, options: InferenceSession.SessionOptions, assetModule: any): Promise<InferenceSession> {
+    async loadModel(fileName: string, options: InferenceSession.SessionOptions): Promise<InferenceSession> {
         try {
-            const asset = Asset.fromModule(assetModule);
+            const filePath = `${this.getModelDirectory()}/${fileName}`;
+            const fileExists = await RNFS.exists(filePath);
 
-            if (!asset.localUri) {
-                await asset.downloadAsync();
+            if (!fileExists) {
+                throw new Error(`[TTS] Model file not found: ${filePath}. Please download models first.`);
             }
 
-            if (!asset.localUri) {
-                throw new Error(`[TTS] asset.localUri is null for: ${fileName}`);
-            }
-
-            const base64 = await RNFS.readFile(asset.localUri.replace('file://', ''), 'base64');
+            const base64 = await RNFS.readFile(filePath, 'base64');
 
             const modelBuffer = Buffer.from(base64, 'base64');
             return await InferenceSession.create(modelBuffer, options);

@@ -73,6 +73,10 @@ export default function App() {
   const [noiseScale, setNoiseScale] = useState(0.667);
   const [lengthScale, setLengthScale] = useState(1.0);
 
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [currentFile, setCurrentFile] = useState('');
+
   const engineRef = useRef<ValtecTTSEngine | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
@@ -85,19 +89,9 @@ export default function App() {
   ];
 
   useEffect(() => {
-    (async () => {
-      try {
-        const engine = new ValtecTTSEngine();
-        await engine.initialize();
-        engineRef.current = engine;
-        setReady(true);
-      } catch (e: any) {
-        console.error(e);
-        Alert.alert('Lỗi', e?.message ?? 'Không khởi tạo được TTS');
-      }
-    })();
-
+    engineRef.current = new ValtecTTSEngine();
     return () => {
+      engineRef.current?.close();
       soundRef.current?.unloadAsync();
     };
   }, []);
@@ -140,6 +134,64 @@ export default function App() {
     }
   };
 
+  const initEngine = async () => {
+    try {
+      if (!engineRef.current) engineRef.current = new ValtecTTSEngine();
+      setProcessing(true);
+      await engineRef.current.initialize();
+      setReady(true);
+      Alert.alert('Thành công', 'Engine đã sẵn sàng.');
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert('Lỗi', e?.message ?? 'Không khởi tạo được TTS, hãy đảm bảo đã tải mô hình.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const downloadModels = async () => {
+    try {
+      if (!engineRef.current) engineRef.current = new ValtecTTSEngine();
+      setDownloading(true);
+      setDownloadProgress(0);
+      await engineRef.current.downloadModels((progress, fileName) => {
+        setDownloadProgress(progress);
+        setCurrentFile(fileName);
+      });
+      Alert.alert('Thành công', 'Đã tải xong models, bạn có thể khởi tạo.');
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert('Lỗi tải', e?.message ?? 'Đã có lỗi trong quá trình tải.');
+    } finally {
+      setDownloading(false);
+      setDownloadProgress(0);
+      setCurrentFile('');
+    }
+  };
+
+  const deleteModels = async () => {
+    try {
+      if (!engineRef.current) return;
+      await engineRef.current.deleteModels();
+      Alert.alert('Thành công', 'Đã xóa toàn bộ các file model đã tải.');
+    } catch (e: any) {
+      console.error(e);
+      Alert.alert('Lỗi xóa', e?.message ?? 'Đã có lỗi xảy ra.');
+    }
+  };
+
+  const closeEngine = async () => {
+    try {
+      if (engineRef.current) {
+        await engineRef.current.close();
+      }
+      setReady(false);
+      Alert.alert('Thành công', 'Đã tắt model để giải phóng bộ nhớ.');
+    } catch (e: any) {
+      console.error(e);
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* HEADER */}
@@ -158,6 +210,42 @@ export default function App() {
           placeholder="Nhập văn bản..."
           placeholderTextColor="#666"
         />
+      </View>
+
+      {/* Control Panel */}
+      <View style={styles.controlPanel}>
+        {downloading ? (
+          <View style={styles.downloadStatus}>
+            <Text style={styles.downloadText}>Đang tải: {currentFile}</Text>
+            <Text style={styles.progressText}>{downloadProgress.toFixed(1)}%</Text>
+          </View>
+        ) : (
+          <View style={styles.actionRow}>
+            {!ready && (
+              <TouchableOpacity style={styles.btnAction} onPress={downloadModels} disabled={processing}>
+                <Text style={styles.btnText}>Tải Model</Text>
+              </TouchableOpacity>
+            )}
+
+            {!ready && (
+              <TouchableOpacity style={[styles.btnAction, styles.btnInit]} onPress={initEngine} disabled={processing}>
+                {processing ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Khởi tạo TTS</Text>}
+              </TouchableOpacity>
+            )}
+
+            {ready && (
+              <TouchableOpacity style={[styles.btnAction, styles.btnClose]} onPress={closeEngine} disabled={processing}>
+                <Text style={styles.btnText}>Tắt Model</Text>
+              </TouchableOpacity>
+            )}
+
+            {!ready && (
+              <TouchableOpacity style={[styles.btnAction, styles.btnDelete]} onPress={deleteModels} disabled={processing}>
+                <Text style={styles.btnText}>Xóa Model</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
 
       {/* SPEAKER */}
@@ -212,11 +300,11 @@ export default function App() {
         disabled={!ready || processing}
         onPress={speak}
       >
-        {processing ? (
+        {processing && ready ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.mainButtonText}>
-            {ready ? 'Phát Tiếng Nói' : 'Đang tải Model...'}
+            {ready ? 'Phát Tiếng Nói' : 'Chưa Khởi Tạo'}
           </Text>
         )}
       </TouchableOpacity>
@@ -267,6 +355,55 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000',
     textAlignVertical: 'top',
+  },
+
+  controlPanel: {
+    marginBottom: 20,
+    padding: 15,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+  },
+  downloadStatus: {
+    alignItems: 'center',
+  },
+  downloadText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 5,
+  },
+  progressText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  btnAction: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    minWidth: '45%',
+    alignItems: 'center',
+    margin: 4,
+  },
+  btnInit: {
+    backgroundColor: '#34C759',
+  },
+  btnClose: {
+    backgroundColor: '#FF9500',
+  },
+  btnDelete: {
+    backgroundColor: '#FF3B30',
+  },
+  btnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 
   label: {
