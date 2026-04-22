@@ -146,11 +146,9 @@ class ValtecTTSEngine {
             if (!fileExists) {
                 throw new Error(`[TTS] Model file not found: ${filePath}. Please download models first.`);
             }
+            const uri = filePath.startsWith('file://') ? filePath : `file://${filePath}`;
 
-            const base64 = await RNFS.readFile(filePath, 'base64');
-
-            const modelBuffer = Buffer.from(base64, 'base64');
-            return await InferenceSession.create(modelBuffer, options);
+            return await InferenceSession.create(uri, options);
         } catch (error: any) {
             throw error;
         }
