@@ -76,6 +76,12 @@ export default function App() {
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
+  const [generationStats, setGenerationStats] = useState<{
+    time: number;
+    audioDuration: number;
+    rtf: number;
+    charCount: number;
+  } | null>(null);
 
   const engineRef = useRef<ValtecTTSEngine | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -105,6 +111,8 @@ export default function App() {
   const speak = async () => {
     if (!engineRef.current || !ready) return;
     setProcessing(true);
+    setGenerationStats(null);
+    const startTime = Date.now();
 
     try {
       const chunks: TextChunk[] = splitTextIntoChunks(text, 0);
@@ -112,7 +120,12 @@ export default function App() {
 
       for (const c of chunks) {
         if (c.text) {
-          const audio = await engineRef.current.synthesize(c.text, speakerId);
+          const audio = await engineRef.current.synthesize(
+            c.text,
+            speakerId,
+            noiseScale,
+            lengthScale
+          );
           buffers.push(audio);
         }
         if (c.addSilenceAfter > 0) {
@@ -120,13 +133,25 @@ export default function App() {
         }
       }
 
-      const total = buffers.reduce((s, b) => s + b.length, 0);
-      const out = new Float32Array(total);
+      const totalSamples = buffers.reduce((s, b) => s + b.length, 0);
+      const out = new Float32Array(totalSamples);
       let off = 0;
       for (const b of buffers) {
         out.set(b, off);
         off += b.length;
       }
+
+      const endTime = Date.now();
+      const durationMs = endTime - startTime;
+      const audioDurationSec = totalSamples / 24000;
+      const rtf = durationMs / 1000 / audioDurationSec;
+
+      setGenerationStats({
+        time: durationMs,
+        audioDuration: audioDurationSec,
+        rtf: rtf,
+        charCount: text.length,
+      });
 
       await play(out);
     } finally {
@@ -309,6 +334,33 @@ export default function App() {
         )}
       </TouchableOpacity>
 
+      {/* GENERATION STATS */}
+      {generationStats && (
+        <View style={styles.statsBox}>
+          <Text style={styles.statsTitle}>Hiệu suất sinh âm thanh:</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statsItem}>
+              <Text style={styles.statsLabel}>Xử lý</Text>
+              <Text style={styles.statsValue}>{generationStats.time}ms</Text>
+            </View>
+            <View style={styles.statsItem}>
+              <Text style={styles.statsLabel}>Âm thanh</Text>
+              <Text style={styles.statsValue}>{generationStats.audioDuration.toFixed(2)}s</Text>
+            </View>
+            <View style={styles.statsItem}>
+              <Text style={styles.statsLabel}>RTF</Text>
+              <Text style={styles.statsValue}>{generationStats.rtf.toFixed(3)}</Text>
+            </View>
+            <View style={styles.statsItem}>
+              <Text style={styles.statsLabel}>Tốc độ</Text>
+              <Text style={styles.statsValue}>
+                {Math.round(generationStats.charCount / (generationStats.time / 1000))} ký tự/s
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* INFO */}
       <View style={styles.infoBox}>
         <Text style={styles.infoTitle}>Thông số:</Text>
@@ -482,5 +534,39 @@ const styles = StyleSheet.create({
   adjustText: {
     fontSize: 20,
     fontWeight: 'bold',
+  },
+
+  statsBox: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+  },
+  statsTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginBottom: 10,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+  },
+  statsItem: {
+    width: '24%',
+    alignItems: 'center',
+  },
+  statsLabel: {
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 2,
+  },
+  statsValue: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#1B5E20',
   },
 });
